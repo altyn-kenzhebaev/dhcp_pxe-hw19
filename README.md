@@ -8,10 +8,15 @@ ls -l
 README.md
 ansible
 Vagrantfile
+bios.png
+UEFI1.png
+UEFI2.png
+UEFI3.png
 ```
 Здесь:
 - ansible - папка с плэйбуком
 - README.md - файл с данным руководством
+- bios.png, UEFI1.png, UEFI2.png, UEFI3.png - картинки прикрепленные к данному руководству
 - Vagrantfile - файл описывающий виртуальную инфраструктуру для `Vagrant`
 Для начало необходимо скачать актуальный образ системы, возьмём для примера дистрибьютив ОС Almalinux 9.2
 На локальной машине переходим папку Downloads, и качаем образ, для меня ближайший репозиторий в Казахстане:
@@ -21,7 +26,7 @@ wget http://mirror.ps.kz/almalinux/9.2/isos/x86_64/AlmaLinux-9-latest-x86_64-min
 ```
 Запускаем тестовй стенд:
 ```
-vagrant up
+vagrant up pxeserver
 ```
 ## Особенности развертывания pseserver (Выжимка ansible)
 Первым делом, ставятся пакеты:
@@ -49,6 +54,7 @@ vagrant up
       update_cache: true
 ```
 Поставил пакет tftp для нахождения неисправностей tftp-server, к примеру можно обратиться к серверу и скачать файл `tftp  "10.0.0.20"  -c get "uefi/shim.efi"` 
+
 ---
 Дальше нужно смонтировать скачанный образ в pxeserver, можно это сделать вручную через графический интерфейс, можно указать в Vagrantfile:
 ```
@@ -234,6 +240,9 @@ subnet 10.0.0.0 netmask 255.255.255.0 {
     notify: restart NFS server
 ```
 ## Запуск pxeclient
+```
+vagrant up pxeclient
+```
 ### Через BIOS
 Запускается Vagranfile с включением следующих опций:
 ```
@@ -253,7 +262,7 @@ subnet 10.0.0.0 netmask 255.255.255.0 {
 ![image desc](./bios.png)
 ### Через EFI (special OSes only)
 Для этого требуется закомментировать `'--firmware', 'bios',` в Vagranfile, по-умолчанию данный образ загружается с UEFI.
-ВНИМАНИЕ: тут необходимо во время загрузки начать кнопку `Esc`, чтобы попасть в оконшко загрузки UEFI, далее переходим UEFI Firmware Settings => Boot Manager => UEFI PXEv4 (мак адрес сети pxenet)
+ВНИМАНИЕ: тут необходимо во время загрузки нажать кнопку `Esc`, чтобы попасть в окошко загрузки UEFI, далее переходим UEFI Firmware Settings => Boot Manager => UEFI PXEv4 (мак адрес сети pxenet)
 ![image desc](./UEFI1.png)
 ![image desc](./UEFI2.png)
 ![image desc](./UEFI3.png)
