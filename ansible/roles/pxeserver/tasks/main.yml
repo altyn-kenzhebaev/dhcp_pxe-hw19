@@ -1,0 +1,221 @@
+#Установка репозитория EPEL
+  - name: install EPEL
+    yum:
+      name:
+        - epel-release
+      state: present
+      update_cache: true
+
+#Установка нужных пакетов
+  - name: install softs on linux
+    yum:
+      name:
+        - epel-release
+        - tftp-server
+        - dhcp-server
+        - nfs-utils
+        - syslinux-tftpboot
+        - yum-utils
+        - tftp
+      state: present
+      update_cache: true
+
+#Монтирование ISO как шаринг nfs
+  - name: Create ISO directory
+    file:
+      path: /mnt/almalinux9-install
+      state: directory
+      mode: '0755'
+
+#Монтируем образ в каталог /mnt
+  - name: Mount ISO image
+    mount:
+      path: /mnt/almalinux9-install
+      src: /dev/sr0 
+      fstype: iso9660
+      opts: ro,loop
+      state: mounted
+
+#Создаем share в nfs
+  - name: share in /etc/exports file
+    ansible.builtin.lineinfile:
+      path: /etc/exports
+      state: present
+      line: '/mnt/almalinux9-install *(ro)'
+    notify: restart NFS server
+
+  #Создаем пользователя tftp
+  - name: Add the user 'tftp'
+    ansible.builtin.user:
+      name: tftp
+      shell: /sbin/nologin
+
+  #Создаём каталог /var/lib/tftpboot/
+  - name: Create TFTP directory
+    file:
+      path: /var/lib/tftpboot/
+      state: directory
+      owner: tftp
+      group: tftp
+      mode: '0750'
+
+  #Создаём каталог /var/lib/tftpboot/pxelinux
+  - name: Create TFTP directory
+    file:
+      path: /var/lib/tftpboot/pxelinux
+      state: directory
+      owner: tftp
+      group: tftp
+      mode: '0750'
+
+  #Создаём каталог /var/lib/tftpboot/pxelinux/pxelinux.cfg
+  - name: Create TFTP directory
+    file:
+      path: /var/lib/tftpboot/pxelinux/pxelinux.cfg
+      state: directory
+      owner: tftp
+      group: tftp
+      mode: '0750'
+
+  #Копируем файл-меню на сервер
+  - name: set up pxelinux
+    copy:
+      src: default
+      dest: /var/lib/tftpboot/pxelinux/pxelinux.cfg/default
+      owner: tftp
+      group: tftp
+      mode: '0640'
+  
+#Копируем файлы в каталог /var/lib/tftpboot/
+  - name: copy files to TFTP share
+    copy:
+      src: /tftpboot/{{ item }}
+      dest: /var/lib/tftpboot/pxelinux/{{ item }}
+      mode: '0640'
+      owner: tftp
+      group: tftp
+      remote_src: true
+    with_items:
+      - pxelinux.0
+      - ldlinux.c32
+      - libmenu.c32
+      - libutil.c32
+      - menu.c32
+      - vesamenu.c32
+
+#Создаём каталог /var/lib/tftpboot/pxelinux/images/
+  - name: Create TFTP directory images
+    file:
+      path: /var/lib/tftpboot/pxelinux/images/
+      state: directory
+      owner: tftp
+      group: tftp
+      mode: '0750'
+
+#Создаём каталог /var/lib/tftpboot/pxelinux/images/Almalinux-9/
+  - name: Create TFTP directory images
+    file:
+      path: /var/lib/tftpboot/pxelinux/images/Almalinux-9/
+      state: directory
+      owner: tftp
+      group: tftp
+      mode: '0750'
+
+#Копируем файлы в каталог /var/lib/tftpboot/images/Almalinux-9/
+  - name: copy initrd and vmlinuz files to TFTP share
+    copy:
+      src: /mnt/almalinux9-install/images/pxeboot/{{ item }}
+      dest: /var/lib/tftpboot/pxelinux/images/Almalinux-9/{{ item }}
+      mode: '0750'
+      owner: tftp
+      group: tftp
+      remote_src: true
+    with_items:
+      - initrd.img
+      - vmlinuz
+
+#Создаём каталог /var/lib/tftpboot/uefi
+  - name: Create TFTP directory UEFI
+    file:
+      path: /var/lib/tftpboot/uefi
+      state: directory
+      owner: tftp
+      group: tftp
+      mode: '0750'
+
+#Копируем конфиг grub.cfg
+  - name: set up pxelinux
+    copy:
+      src: grub.cfg
+      dest: /var/lib/tftpboot/uefi/grub.cfg
+      owner: tftp
+      group: tftp
+      mode: '0640'
+
+#Копируем файлы в каталог /var/lib/tftpboot/uefi/
+  - name: copy initrd and vmlinuz files to TFTP share
+    copy:
+      src: /mnt/almalinux9-install/EFI/BOOT/grubx64.efi
+      dest: /var/lib/tftpboot/uefi/grubx64.efi
+      mode: '0550'
+      owner: tftp
+      group: tftp
+      remote_src: true
+
+#Копируем файлы в каталог /var/lib/tftpboot/uefi/
+  - name: copy initrd and vmlinuz files to TFTP share
+    copy:
+      src: /boot/efi/EFI/almalinux/shim.efi
+      dest: /var/lib/tftpboot/uefi/shim.efi
+      mode: '0550'
+      owner: tftp
+      group: tftp
+      remote_src: true
+
+#Копируем файл-конфиг для сервиса tftp
+  - name: set up pxelinux
+    copy:
+      src: tftp.service
+      dest: /usr/lib/systemd/system/tftp.service
+      owner: root
+      group: root
+      mode: '0644'
+    notify: start tftp-server
+
+#Копирование файла конфигурации DHCP-сервера
+  - name: set up dhcp-server
+    copy:
+      src: dhcpd.conf
+      dest: /etc/dhcp/dhcpd.conf
+      owner: root
+      group: root
+      mode: '0644'
+    notify: restart dhcp-server
+
+#Создаём каталог /home/vagrant/cfg
+  - name: Create CFG directory for Kickstart
+    file:
+      path: /home/vagrant/cfg
+      state: directory
+      owner: vagrant
+      group: vagrant
+
+#Копируем ks.cfg для Kickstart
+  - name: set up Kickstart
+    copy:
+      src: ks.cfg
+      dest: /home/vagrant/cfg/ks.cfg
+      owner: vagrant
+      group: vagrant
+
+#Создаем share в nfs для Kickstart
+  - name: share in /etc/exports file
+    ansible.builtin.lineinfile:
+      path: /etc/exports
+      state: present
+      line: '/home/vagrant/cfg *(ro)'
+    notify: restart NFS server
+
+#Отключение SELinux
+  - name: disable SELinux
+    shell: setenforce 0

@@ -1,0 +1,28 @@
+default menu
+prompt 0
+timeout 100
+
+MENU TITLE Demo PXE setup
+
+LABEL linux
+  menu label ^Install system
+  kernel images/Almalinux-9/vmlinuz
+  initrd images/Almalinux-9/initrd.img 
+  append ip=enp0s3:dhcp inst.repo=nfs:10.0.0.20:/mnt/almalinux9-install
+LABEL linux-auto
+  menu label ^Auto install system
+  menu default
+  kernel images/Almalinux-9/vmlinuz
+  initrd images/Almalinux-9/initrd.img
+  append ip=enp0s3:dhcp inst.ks=nfs:10.0.0.20:/home/vagrant/cfg/ks.cfg inst.repo=nfs:10.0.0.20:/mnt/almalinux9-install
+LABEL vesa
+  menu label Install system with ^basic video driver
+  kernel images/Almalinux-9/vmlinuz
+  append initrd=images/Almalinux-9/initrd.img ip=dhcp inst.xdriver=vesa nomodeset
+LABEL rescue
+  menu label ^Rescue installed system
+  kernel images/Almalinux-9/vmlinuz
+  append initrd=images/Almalinux-9/initrd.img rescue
+LABEL local
+  menu label Boot from ^local drive
+  localboot 0xffff

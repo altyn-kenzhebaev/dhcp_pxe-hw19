@@ -1,0 +1,8 @@
+---
+- name: pxeserver | Configure PXE Boot
+  hosts: pxeserver
+  gather_facts: no
+  become: true
+  roles:
+    - pxeserver
+...
